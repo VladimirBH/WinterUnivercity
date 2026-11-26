@@ -1,0 +1,40 @@
+newmtl Warm_lime_plaster
+Kd 0.6800 0.6100 0.4900
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
+newmtl Exposed_red_brick
+Kd 0.3400 0.1500 0.0850
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
+newmtl Limewashed_relief
+Kd 0.7600 0.7000 0.5800
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
+newmtl Foundation_stone
+Kd 0.2900 0.2800 0.2500
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
+newmtl Weathered_dark_roof
+Kd 0.0950 0.1200 0.1300
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
+newmtl Recess_shadow
+Kd 0.0350 0.0280 0.0220
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
+newmtl Oak_doors
+Kd 0.1600 0.0750 0.0350
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
+newmtl Aged_gilding
+Kd 0.5300 0.3400 0.0900
+Ka 0.1 0.1 0.1
+Ks 0.08 0.08 0.08
+
