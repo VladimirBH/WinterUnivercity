@@ -1,0 +1,92 @@
+{
+  "ar": {
+    "title": "Откройте камеру",
+    "instruction": "Наведите камеру на метку у стенда.",
+    "signPreview": "/media/sign.jpg",
+    "trackingTargetUrl": null,
+    "modelUrl": null,
+    "arAvailable": false,
+    "fallback": {
+      "label": "Смотреть без камеры",
+      "url": "/api/v1/monuments/tserkov-lazarya/comparison"
+    }
+  },
+  "card": {
+    "id": "tserkov-lazarya",
+    "title": "Церковь Лазаря",
+    "subtitle": "Софийская сторона · XV век",
+    "thumbnail": "/media/today.jpg",
+    "card": "/api/v1/monuments/tserkov-lazarya",
+    "ensemble": "Лазаревский монастырь",
+    "builtYear": 1461,
+    "dismantledYear": 1859,
+    "description": "Каменный храм псковско-новгородской школы. На месте виден контур фундамента.",
+    "address": "ул. Бредова-Звериная",
+    "hint": "Начните маршрут у информационного стенда.",
+    "comparison": "/api/v1/monuments/tserkov-lazarya/comparison",
+    "source": "/api/v1/monuments/tserkov-lazarya/source",
+    "ar": "/api/v1/monuments/tserkov-lazarya/ar"
+  },
+  "comparison": {
+    "title": "Сравните облик",
+    "views": [
+      {
+        "id": "today",
+        "label": "Сегодня",
+        "title": "Контур фундамента",
+        "description": "Каменная выкладка отмечает место храма.",
+        "image": "/media/today.jpg"
+      },
+      {
+        "id": "xv",
+        "label": "XV век",
+        "title": "Храм в XV веке",
+        "description": "Возможный облик храма 1461 года.",
+        "image": "/media/reconstruction.jpg"
+      }
+    ],
+    "source": "/api/v1/monuments/tserkov-lazarya/source",
+    "ar": "/api/v1/monuments/tserkov-lazarya/ar"
+  },
+  "map": {
+    "title": "Сквозь века",
+    "city": "Великий Новгород",
+    "coordinateSystem": "schematic-normalized-top-left",
+    "markers": [
+      {
+        "id": "tserkov-lazarya",
+        "title": "Церковь Лазаря",
+        "subtitle": "Софийская сторона · XV век",
+        "thumbnail": "/media/today.jpg",
+        "card": "/api/v1/monuments/tserkov-lazarya",
+        "x": 0.48,
+        "y": 0.48
+      }
+    ],
+    "route": {
+      "label": "Начало маршрута",
+      "points": [
+        [
+          0.74,
+          0.86
+        ],
+        [
+          0.64,
+          0.56
+        ],
+        [
+          0.48,
+          0.48
+        ]
+      ]
+    }
+  },
+  "source": {
+    "title": "Как восстановили облик",
+    "image": "/media/drawing.jpg",
+    "caption": "Фасад · план · разрез",
+    "credit": "Обмерный чертёж И. И. Горностаева",
+    "collection": "Музей при РАХ",
+    "explanation": "План и разрез помогли восстановить форму и пропорции. Детали кровли и главы в модели показаны предположительно."
+  }
+}
