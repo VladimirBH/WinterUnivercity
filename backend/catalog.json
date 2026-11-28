@@ -4,8 +4,15 @@
     "instruction": "Наведите камеру на метку у стенда.",
     "signPreview": "/media/sign.jpg",
     "trackingTargetUrl": null,
-    "modelUrl": null,
+    "modelUrl": "/media/3dModeling/Lazarus_1862_AR.glb",
     "arAvailable": false,
+    "models": [
+      {
+        "viewId": "xix",
+        "label": "XIX век",
+        "modelUrl": "/media/3dModeling/Lazarus_1862_AR.glb"
+      }
+    ],
     "fallback": {
       "label": "Смотреть без камеры",
       "url": "/api/v1/monuments/tserkov-lazarya/comparison"
@@ -60,7 +67,9 @@
         "thumbnail": "/media/today.jpg",
         "card": "/api/v1/monuments/tserkov-lazarya",
         "x": 0.48,
-        "y": 0.48
+        "y": 0.48,
+        "latitude": 58.533963,
+        "longitude": 31.278695
       }
     ],
     "route": {

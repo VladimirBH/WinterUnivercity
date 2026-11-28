@@ -17,6 +17,9 @@ internal data class Marker(
     val subtitle: String,
     val card: String,
     val position: Offset,
+    val latitude: Double?,
+    val longitude: Double?,
+    val thumbnail: String?,
 )
 
 internal data class GuideMap(
@@ -30,12 +33,14 @@ internal data class GuideMap(
 internal data class Monument(
     val title: String,
     val ensemble: String,
-    val builtYear: Int,
-    val dismantledYear: Int,
+    val builtYear: Int?,
+    val dismantledYear: Int?,
     val description: String,
     val address: String,
     val source: String,
     val ar: String,
+    val thumbnail: String?,
+    val hint: String?,
 )
 
 internal data class Era(
@@ -43,6 +48,7 @@ internal data class Era(
     val label: String,
     val title: String,
     val description: String,
+    val image: String?,
 )
 
 internal data class Comparison(val title: String, val eras: List<Era>, val source: String, val ar: String)
@@ -53,13 +59,16 @@ internal data class HistoricalSource(
     val credit: String,
     val collection: String,
     val explanation: String,
+    val image: String?,
+    val referenceUrl: String?,
 )
 
 internal data class ArGuide(
-    val title: String,
-    val instruction: String,
     val fallbackUrl: String,
+    val model: ChurchModel?,
 )
+
+internal data class ChurchModel(val asset: String, val label: String) : java.io.Serializable
 
 internal class GuideApi(context: Context) {
     private val assets = context.applicationContext.assets
@@ -76,6 +85,9 @@ internal class GuideApi(context: Context) {
                     marker.getString("subtitle"),
                     marker.getString("card"),
                     Offset(marker.getDouble("x").toFloat(), marker.getDouble("y").toFloat()),
+                    marker.optDouble("latitude").takeIf { it in -90.0..90.0 },
+                    marker.optDouble("longitude").takeIf { it in -180.0..180.0 },
+                    marker.optionalText("thumbnail"),
                 )
             },
             route.getString("label"),
@@ -89,9 +101,10 @@ internal class GuideApi(context: Context) {
     suspend fun monument(path: String): Monument = document(path) {
         Monument(
             getString("title"), getString("ensemble"),
-            getInt("builtYear"), getInt("dismantledYear"), getString("description"),
+            getNullableYear("builtYear"), getNullableYear("dismantledYear"), getString("description"),
             getString("address"),
             getString("source"), getString("ar"),
+            optionalText("thumbnail"), optionalText("hint"),
         )
     }
 
@@ -102,7 +115,7 @@ internal class GuideApi(context: Context) {
                 val era = getJSONObject(index)
                 Era(
                     era.getString("id"), era.getString("label"), era.getString("title"),
-                    era.getString("description"),
+                    era.getString("description"), era.optionalText("image"),
                 )
             },
             getString("source"),
@@ -114,14 +127,27 @@ internal class GuideApi(context: Context) {
         HistoricalSource(
             getString("title"), getString("caption"),
             getString("credit"), getString("collection"), getString("explanation"),
+            optionalText("image"), optionalText("referenceUrl"),
         )
     }
 
     suspend fun ar(path: String): ArGuide = document(path) {
+        val models = optJSONArray("models")?.items { getJSONObject(it) }.orEmpty()
+        val model = models.firstNotNullOfOrNull {
+            bundledModel(it.getString("modelUrl"), it.getString("label"))
+        }
         ArGuide(
-            getString("title"), getString("instruction"),
             getJSONObject("fallback").getString("url"),
+            model ?: bundledModel(optString("modelUrl"), "Историческая реконструкция"),
         )
+    }
+
+    private fun bundledModel(url: String, label: String): ChurchModel? {
+        val prefix = "/media/3dModeling/"
+        if (!url.startsWith(prefix)) return null
+        val filename = url.removePrefix(prefix)
+        if (!filename.endsWith(".glb") || filename !in assets.list("models").orEmpty()) return null
+        return ChurchModel("models/$filename", label)
     }
 
     private suspend fun <T> document(path: String, parse: JSONObject.() -> T): T = withContext(Dispatchers.IO) {
@@ -168,6 +194,11 @@ internal class GuideApi(context: Context) {
         else -> throw IOException("Catalog entry unavailable offline")
     }
 }
+
+private fun JSONObject.optionalText(key: String): String? =
+    if (isNull(key)) null else optString(key).takeIf(String::isNotBlank)
+
+private fun JSONObject.getNullableYear(key: String): Int? = if (isNull(key)) null else getInt(key)
 
 private inline fun <T> JSONArray.items(parse: JSONArray.(Int) -> T): List<T> =
     List(length()) { parse(it) }

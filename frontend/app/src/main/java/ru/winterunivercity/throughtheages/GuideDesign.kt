@@ -1,5 +1,6 @@
 package ru.winterunivercity.throughtheages
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,13 +11,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -28,6 +34,9 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal val Ink = Color(0xFF20242A)
 internal val Muted = Color(0xFF545C66)
@@ -160,6 +169,41 @@ internal fun GuideImage(
     scale: ContentScale = ContentScale.Crop,
 ) {
     Image(painterResource(drawable), description, modifier, contentScale = scale)
+}
+
+// Use the original Figma artwork for its catalog entries and the bundled project
+// photographs for the other monument and historical views.
+@Composable
+internal fun CatalogPhoto(path: String?, modifier: Modifier, description: String? = null) {
+    val drawable = when (path) {
+        "/media/today.jpg" -> R.drawable.lazarus_today
+        "/media/drawing.jpg" -> R.drawable.lazarus_drawing
+        "/media/reconstruction.jpg", "/media/3dModeling/Lazarus_1461_preview.png" -> R.drawable.lazarus_reconstruction
+        else -> null
+    }
+    if (drawable != null) {
+        GuideImage(drawable, modifier, description)
+        return
+    }
+    val asset = when (path) {
+        "/media/peter-paul-today.jpg" -> "peter-paul-today.jpg"
+        "/media/3dModeling/Lazarus_1862_preview.png" -> "Lazarus_1862_preview.png"
+        "/media/3dModeling/Peter_Paul_Kozhevniki_XIX_v2_preview.jpg" -> "Peter_Paul_Kozhevniki_XIX_v2_preview.jpg"
+        else -> return
+    }
+    val assets = LocalContext.current.assets
+    val image by produceState<ImageBitmap?>(null, assets, asset) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                assets.open("photos/$asset").use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+            } catch (_: IOException) {
+                null
+            }
+        }
+    }
+    val bitmap = image
+    if (bitmap != null) Image(bitmap, description, modifier, contentScale = ContentScale.Crop)
+    else Box(modifier)
 }
 
 @Composable

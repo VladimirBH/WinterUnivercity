@@ -17,6 +17,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,15 +75,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { MAP, MONUMENT, SCAN, CAMERA_COMPARISON, OFFLINE_COMPARISON, SOURCE }
-private data class Subject(val title: String, val builtYear: Int, val dismantledYear: Int) : Serializable {
-    val attribution get() = title.uppercase(Locale.ROOT) + " · " + builtYear
+private enum class Screen { MAP, MONUMENT, AR, OFFLINE_COMPARISON, SOURCE }
+private data class Subject(val title: String, val builtYear: Int?) : Serializable {
+    val attribution get() = title.uppercase(Locale.ROOT) + (builtYear?.let { " · $it" } ?: "")
 }
 private data class Destination(
     val screen: Screen,
     val path: String,
     val subject: Subject? = null,
-    val comparisonPath: String? = null,
+    val model: ChurchModel? = null,
 ) : Serializable
 private data class CameraRequest(val arPath: String, val subject: Subject) : Serializable
 
@@ -92,11 +93,10 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
     val api = remember(context) { GuideApi(context) }
     var navigation by rememberSaveable { mutableStateOf(arrayListOf(Destination(Screen.MAP, "/api/v1/map"))) }
     var cameraRequest by rememberSaveable { mutableStateOf<CameraRequest?>(null) }
-    var selectedEra by rememberSaveable { mutableStateOf<String?>(null) }
 
     val destination = navigation.last()
     val parent = navigation.getOrNull(navigation.lastIndex - 1)
-    val immersive = destination.screen == Screen.SCAN || destination.screen == Screen.CAMERA_COMPARISON
+    val immersive = destination.screen == Screen.AR
     val onBack: () -> Unit = {
         if (cameraRequest != null) cameraRequest = null
         else if (navigation.size > 1) navigation = ArrayList(navigation.dropLast(1))
@@ -106,7 +106,7 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
     }
     fun openOffline(path: String, subject: Subject) {
         val screen = Destination(Screen.OFFLINE_COMPARISON, path, subject)
-        val previous = if (navigation.last().screen == Screen.SCAN) navigation.dropLast(1) else navigation
+        val previous = if (navigation.last().screen == Screen.AR) navigation.dropLast(1) else navigation
         navigation = ArrayList(if (previous.last() == screen) previous else previous + screen)
     }
 
@@ -126,35 +126,24 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
                     MapScreen(map) { open(Destination(Screen.MONUMENT, it)) }
                 }
                 Screen.MONUMENT -> GuideData(path, onBack, api::monument) { monument ->
-                    val subject = Subject(monument.title, monument.builtYear, monument.dismantledYear)
+                    val subject = Subject(monument.title, monument.builtYear)
                     MonumentDetails(
                         monument, onBack,
                         onAr = { cameraRequest = CameraRequest(monument.ar, subject) },
                         onSource = { open(Destination(Screen.SOURCE, monument.source, subject)) },
                     )
                 }
-                Screen.SCAN -> {
+                Screen.AR -> {
                     val subject = requireNotNull(destination.subject)
-                    val comparison = requireNotNull(destination.comparisonPath)
-                    ScanScreen(
-                        onBack,
-                        onShowComparison = {
-                            selectedEra = null
-                            open(Destination(Screen.CAMERA_COMPARISON, comparison, subject))
-                        },
-                        onMissingMark = { openOffline(comparison, subject) },
+                    ChurchArScreen(
+                        subject.title, requireNotNull(destination.model), onBack,
+                        onWithoutCamera = { openOffline(path, subject) },
                     )
-                }
-                Screen.CAMERA_COMPARISON -> GuideData(path, onBack, api::comparison) { comparison ->
-                    val subject = requireNotNull(destination.subject)
-                    CameraComparisonScreen(comparison, subject.title, selectedEra, { selectedEra = it }, onBack) {
-                        open(Destination(Screen.SOURCE, comparison.source, subject))
-                    }
                 }
                 Screen.OFFLINE_COMPARISON -> GuideData(path, onBack, api::comparison) { comparison ->
                     val subject = requireNotNull(destination.subject)
                     OfflineComparisonScreen(
-                        comparison, onBack,
+                        comparison, subject.title, onBack,
                         onSource = { open(Destination(Screen.SOURCE, comparison.source, subject)) },
                         onCamera = { cameraRequest = CameraRequest(comparison.ar, subject) },
                     )
@@ -162,7 +151,7 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
                 Screen.SOURCE -> GuideData(path, onBack, api::source) { source ->
                     HistoricalSourceScreen(
                         source, requireNotNull(destination.subject).attribution,
-                        parent?.screen in setOf(Screen.CAMERA_COMPARISON, Screen.OFFLINE_COMPARISON), onBack,
+                        parent?.screen == Screen.OFFLINE_COMPARISON, onBack,
                     )
                 }
             }
@@ -171,8 +160,10 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
                     request.arPath, api,
                     onDismiss = { cameraRequest = null },
                     onCamera = { ar ->
-                        cameraRequest = null
-                        open(Destination(Screen.SCAN, request.arPath, request.subject, ar.fallbackUrl))
+                        ar.model?.let { model ->
+                            cameraRequest = null
+                            open(Destination(Screen.AR, ar.fallbackUrl, request.subject, model))
+                        }
                     },
                     onWithoutCamera = { ar ->
                         cameraRequest = null
@@ -190,6 +181,8 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
 @Composable
 private fun MapScreen(map: GuideMap, onOpen: (String) -> Unit) {
     val first = map.markers.firstOrNull()
+    val geocodedMarkers = map.markers.filter { it.latitude != null && it.longitude != null }
+    var showSchematic by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().background(Paper).padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 10.dp),
@@ -208,7 +201,18 @@ private fun MapScreen(map: GuideMap, onOpen: (String) -> Unit) {
                 ) { GuideGlyph(Glyph.BRAND, Ink, Modifier.size(24.dp)) }
             }
         }
-        NeighborhoodMap(map, Modifier.weight(1f).fillMaxWidth(), onOpen)
+        if (geocodedMarkers.isNotEmpty()) {
+            TextButton(
+                onClick = { showSchematic = !showSchematic },
+                modifier = Modifier.align(Alignment.End).padding(end = 16.dp),
+            ) { Text(if (showSchematic) "Карта города" else "Схема маршрута") }
+        }
+        val mapModifier = Modifier.weight(1f).fillMaxWidth()
+        if (showSchematic || geocodedMarkers.isEmpty()) {
+            NeighborhoodMap(map, mapModifier, onOpen)
+        } else {
+            CityMap(geocodedMarkers, mapModifier, onOpen)
+        }
         if (first != null) MonumentCard(first) { onOpen(first.card) }
     }
 }
@@ -303,7 +307,7 @@ private fun MonumentCard(marker: Marker, onOpen: () -> Unit) {
         SheetHandle()
         Spacer(Modifier.height(15.dp))
         Row(verticalAlignment = Alignment.Top) {
-            GuideImage(R.drawable.lazarus_today, Modifier.size(77.dp).clip(RoundedCornerShape(8.dp)))
+            CatalogPhoto(marker.thumbnail, Modifier.size(77.dp).clip(RoundedCornerShape(8.dp)))
             Column(Modifier.padding(start = 15.dp, top = 4.dp)) {
                 Text(marker.title, color = Ink, fontSize = 24.sp, lineHeight = 28.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-.65).sp)
                 Text(marker.subtitle, Modifier.padding(top = 5.dp), color = Muted, fontSize = 14.sp, lineHeight = 19.sp)
@@ -320,16 +324,19 @@ internal fun ColumnScope.SheetHandle() {
 }
 
 @Composable
-internal fun MonumentYears(built: Int, dismantled: Int) {
+internal fun MonumentYears(built: Int?, dismantled: Int?) {
+    if (built == null && dismantled == null) return
     Row(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth(.437f)) {
-            Text(built.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold)
-            Text("Построена", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
-        }
-        Column {
-            Text(dismantled.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold)
-            Text("Разобрана", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
-        }
+        if (built != null) MonumentYear(built, "Построена", Modifier.fillMaxWidth(.437f))
+        if (dismantled != null) MonumentYear(dismantled, "Разобрана")
+    }
+}
+
+@Composable
+private fun MonumentYear(year: Int, label: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(year.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold)
+        Text(label, Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
     }
 }
 
@@ -342,10 +349,10 @@ private fun MonumentDetails(monument: Monument, onBack: () -> Unit, onAr: () -> 
         Spacer(Modifier.height(7.dp))
         Text(monument.title, color = Ink, fontSize = 35.sp, lineHeight = 41.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-1.05).sp)
         Spacer(Modifier.height(14.dp))
-        GuideImage(
-            R.drawable.lazarus_today,
+        CatalogPhoto(
+            monument.thumbnail,
             Modifier.fillMaxWidth().aspectRatio(350f / 219f).clip(RoundedCornerShape(12.dp)),
-            description = "Контур церкви Лазаря",
+            description = monument.title,
         )
         Spacer(Modifier.height(17.dp))
         MonumentYears(monument.builtYear, monument.dismantledYear)
@@ -360,7 +367,9 @@ private fun MonumentDetails(monument: Monument, onBack: () -> Unit, onAr: () -> 
             }
             Column(Modifier.padding(top = 1.dp)) {
                 Text(monument.address, color = Ink, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text("Ищите контур у информационного стенда.", Modifier.padding(top = 5.dp), color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
+                monument.hint?.let { hint ->
+                    Text(hint, Modifier.padding(top = 5.dp), color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
+                }
             }
         }
         Spacer(Modifier.height(22.dp))
