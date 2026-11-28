@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,15 +81,28 @@ internal fun OfflineComparisonScreen(
     GuidePage {
         GuideHeader("Без камеры", onBack)
         Spacer(Modifier.height(19.dp))
-        Text(comparison.title, color = Ink, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.2).sp)
+        Text(comparison.title, color = Ink, fontSize = 34.sp, lineHeight = 40.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-1.2).sp)
         Text("Церковь Лазаря сегодня и в XV веке.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
         Spacer(Modifier.height(26.dp))
         comparison.eras.forEachIndexed { index, era ->
             if (index > 0) Spacer(Modifier.height(12.dp))
             BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))) {
-                val height = maxWidth * (if (era.id == "today") (190f / 350f) else (239f / 350f))
-                GrayCanvas(Modifier.fillMaxWidth().height(height))
-                val suffix = if (era.id == "today") era.title.lowercase() else "реконструкция"
+                val tileWidth = maxWidth
+                val height = tileWidth * (if (era.id == "today") (190f / 350f) else (239f / 350f))
+                val today = era.id == "today"
+                if (today) {
+                    GuideImage(R.drawable.lazarus_today, Modifier.fillMaxWidth().height(height), era.title)
+                } else {
+                    Box(Modifier.fillMaxWidth().height(height).background(Color(0xFFEFF1F4))) {
+                        GuideImage(
+                            R.drawable.lazarus_reconstruction,
+                            Modifier.align(Alignment.TopCenter).offset(y = height * (36f / 239f))
+                                .size(tileWidth * (120f / 350f), height * (190f / 239f)),
+                            era.title, ContentScale.Fit,
+                        )
+                    }
+                }
+                val suffix = if (today) era.title.lowercase(Locale.ROOT) else "реконструкция"
                 Text(
                     era.label + " · " + suffix,
                     Modifier.padding(12.dp).background(Card, RoundedCornerShape(6.dp)).padding(horizontal = 14.dp, vertical = 6.dp),
@@ -101,7 +114,7 @@ internal fun OfflineComparisonScreen(
         Spacer(Modifier.weight(1f))
         GuideAction("Как восстановили облик", onSource, icon = Glyph.DOCUMENT, arrow = true)
         Spacer(Modifier.height(10.dp))
-        GuideAction("Попробовать с камерой", onCamera, ActionStyle.OUTLINE, icon = Glyph.CAMERA)
+        GuideAction("Попробовать с камерой", onCamera, ActionStyle.OUTLINE, icon = Glyph.CAMERA, height = 54)
     }
 }
 
@@ -115,50 +128,81 @@ internal fun CameraComparisonScreen(
     onSource: () -> Unit,
 ) {
     val era = comparison.eras.firstOrNull { it.id == selectedEra } ?: comparison.eras.firstOrNull()
-    Column(Modifier.fillMaxSize().background(CanvasGray)) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            CameraHeaderShade()
-            Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 25.dp)) {
-                GuideHeader(title, onBack, dark = true)
-                Spacer(Modifier.height(11.dp))
-                Row(
-                    Modifier.background(Night.copy(alpha = .92f), RoundedCornerShape(5.dp))
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    val reconstructed = era?.id == "xv"
-                    GuideGlyph(if (reconstructed) Glyph.LAYERS else Glyph.CHECK, Card, Modifier.size(14.dp))
-                    Text(if (reconstructed) "Реконструкция" else "Метка найдена", color = Card, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
+    val reconstructed = era?.id == "xv"
+    BoxWithConstraints(Modifier.fillMaxSize().background(Night)) {
+        val sceneHeight = maxHeight
+        val sceneWidth = maxWidth
+        GuideImage(R.drawable.lazarus_camera, Modifier.matchParentSize(), "Контур церкви Лазаря")
+        if (reconstructed) {
+            GuideImage(
+                R.drawable.model_shadow,
+                Modifier.align(Alignment.TopCenter).offset(y = sceneHeight * (533f / 844f))
+                    .size(sceneWidth * (250f / 390f), sceneHeight * (44f / 844f)),
+                scale = ContentScale.FillBounds,
+            )
+            GuideImage(
+                R.drawable.lazarus_reconstruction,
+                Modifier.align(Alignment.TopCenter).offset(y = sceneHeight * (194f / 844f))
+                    .size(sceneWidth * (234f / 390f), sceneHeight * (370f / 844f)),
+                "Реконструкция церкви Лазаря", ContentScale.Fit,
+            )
+        } else {
+            GuideImage(
+                R.drawable.foundation_outline,
+                Modifier.fillMaxWidth().offset(y = sceneHeight * (404f / 844f))
+                    .height(sceneHeight * (176f / 844f)),
+                scale = ContentScale.FillBounds,
+            )
         }
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp))
-            .background(Night).padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 12.dp)) {
-            if (era != null) {
-                Text(era.title, color = Card, fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.8).sp)
-                Spacer(Modifier.height(7.dp))
-                Text(era.description, color = NightText, fontSize = 14.sp, lineHeight = 20.sp)
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFF29362F)).padding(5.dp).selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                for (item in comparison.eras) {
-                    val selected = item.id == era?.id
-                    Box(
-                        Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(7.dp))
-                            .background(if (selected) Lime else Color.Transparent)
-                            .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(item.id) }),
-                        contentAlignment = Alignment.Center,
+        CameraHeaderShade()
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                Column(
+                    Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(start = 20.dp, end = 20.dp, top = 25.dp),
+                ) {
+                    GuideHeader(title, onBack, dark = true)
+                    Spacer(Modifier.height(11.dp))
+                    Row(
+                        Modifier.background(Night.copy(alpha = .92f), RoundedCornerShape(5.dp))
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text(item.label, color = if (selected) Ink else Card, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        GuideGlyph(if (reconstructed) Glyph.LAYERS else Glyph.CHECK, OnNight, Modifier.size(16.dp))
+                        Text(if (reconstructed) "Реконструкция" else "Метка найдена", color = OnNight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            GuideAction("Как восстановили облик", onSource, ActionStyle.DARK_OUTLINE, icon = Glyph.DOCUMENT)
+            val panelRadius = if (reconstructed) 42.dp else 18.dp
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = panelRadius, topEnd = panelRadius))
+                .background(Night).windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 12.dp)) {
+                if (era != null) {
+                    Text(era.title, color = OnNight, fontSize = 30.sp, lineHeight = 37.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-.6).sp)
+                    Spacer(Modifier.height(7.dp))
+                    Text(era.description, color = NightText, fontSize = 14.sp, lineHeight = 17.sp)
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFF343E4A)).padding(5.dp).selectableGroup(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    for (item in comparison.eras) {
+                        val selected = item.id == era?.id
+                        Box(
+                            Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(7.dp))
+                                .background(if (selected) Yellow else Color.Transparent)
+                                .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(item.id) }),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(item.label, color = if (selected) Ink else OnNight, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                GuideAction("Как восстановили облик", onSource, ActionStyle.DARK_OUTLINE, icon = Glyph.DOCUMENT)
+            }
         }
     }
 }
@@ -176,18 +220,20 @@ internal fun HistoricalSourceScreen(
         Text(attribution, color = Ink, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
         Spacer(Modifier.height(14.dp))
         val heading = if (source.title == "Как восстановили облик") "Как восстановили\nоблик" else source.title
-        Text(heading, color = Ink, fontFamily = FontFamily.Serif, fontSize = 36.sp, lineHeight = 41.sp)
+        Text(heading, color = Ink, fontSize = 36.sp, lineHeight = 41.sp, fontFamily = GuideArchiveFont, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(17.dp))
         val mount = RoundedCornerShape(18.dp)
-        val frame = RoundedCornerShape(8.dp)
+        val frame = RoundedCornerShape(4.dp)
         Column(
-            Modifier.fillMaxWidth().clip(mount).background(Color(0xFFEFE5D3))
-                .border(1.dp, Color(0xFFE2CFB3), mount)
-                .padding(start = 13.dp, end = 13.dp, top = 14.dp, bottom = 28.dp),
+            Modifier.fillMaxWidth().clip(mount).background(Color(0xFFF0E6D5))
+                .border(1.dp, Color(0xFFDFD2BE), mount)
+                .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 28.dp),
         ) {
-            GrayCanvas(
-                Modifier.fillMaxWidth().aspectRatio(324f / 191f).clip(frame)
-                    .border(4.dp, Color(0xFFDCC6A5), frame),
+            GuideImage(
+                R.drawable.lazarus_drawing,
+                Modifier.fillMaxWidth().aspectRatio(316f / 181f).clip(frame)
+                    .border(4.dp, Color(0xFFDFC9AA), frame),
+                "Фасад, план и разрез церкви по чертежу И. И. Горностаева",
             )
             Spacer(Modifier.height(18.dp))
             Text(source.caption.uppercase(Locale.ROOT), Modifier.padding(start = 4.dp), color = Muted, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.2.sp)

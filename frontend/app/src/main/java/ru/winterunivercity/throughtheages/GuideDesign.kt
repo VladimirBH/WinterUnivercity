@@ -1,6 +1,7 @@
 package ru.winterunivercity.throughtheages
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,26 +22,46 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-internal val Ink = Color(0xFF17211B)
-internal val Muted = Color(0xFF4B5E54)
-internal val Paper = Color(0xFFF4F6F2)
-internal val Card = Color(0xFFFDFDFC)
-internal val Border = Color(0xFFD3DCD3)
-internal val Lime = Color(0xFFDCF778)
-internal val Night = Color(0xFF151E19)
-internal val NightBorder = Color(0xFF46544B)
-internal val NightText = Color(0xFFC2CDC4)
-internal val CanvasGray = Color(0xFFD9DDDA)
+internal val Ink = Color(0xFF20242A)
+internal val Muted = Color(0xFF545C66)
+internal val Paper = Color.White
+internal val Card = Color.White
+internal val Border = Color(0xFFDFE3E8)
+internal val Yellow = Color(0xFFFFCC00)
+internal val PaleYellow = Color(0xFFFFF1BF)
+internal val ActionDark = Color(0xFF222A35)
+internal val Night = Color(0xFF202832)
+internal val NightBorder = Color(0xFF46524A)
+internal val NightText = Color(0xFFC3CEC6)
+internal val OnNight = Color(0xFFFAFBF7)
+internal val Scrim = Color(0xAD101814)
+
+@OptIn(ExperimentalTextApi::class)
+private fun guideFont(resource: Int, vararg weights: FontWeight): FontFamily = FontFamily(
+    weights.map { weight ->
+        Font(resource, weight = weight, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)))
+    },
+)
+
+internal val GuideBodyFont = guideFont(R.font.inter_variable, FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold)
+internal val GuideHeadingFont = guideFont(R.font.onest_variable, FontWeight.Bold)
+internal val GuideArchiveFont = guideFont(R.font.manrope_variable, FontWeight.Bold)
 
 internal enum class Glyph { LEFT, RIGHT, CAMERA, SCAN, DOCUMENT, CHURCH, PIN, CHECK, LAYERS }
-internal enum class ActionStyle { FILLED, OUTLINE, LIME, DARK_OUTLINE, PLAIN }
+internal enum class ActionStyle { FILLED, OUTLINE, ACCENT, DARK_OUTLINE, PLAIN }
 
 @Composable
 internal fun GuidePage(content: @Composable ColumnScope.() -> Unit) {
@@ -58,11 +79,11 @@ internal fun GuidePage(content: @Composable ColumnScope.() -> Unit) {
 internal fun GuideHeader(label: String, onBack: () -> Unit, centered: Boolean = false, dark: Boolean = false) {
     Box(Modifier.fillMaxWidth().height(44.dp)) {
         if (centered) {
-            Text(label, Modifier.align(Alignment.Center), color = if (dark) Card else Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(label, Modifier.align(Alignment.Center), color = if (dark) OnNight else Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         } else {
             Text(
                 label, Modifier.align(Alignment.CenterStart).padding(start = 56.dp),
-                color = if (dark) Card else Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                color = if (dark) OnNight else Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
             )
         }
         BackArrow(onBack, dark)
@@ -79,7 +100,7 @@ internal fun BackArrow(onBack: () -> Unit, dark: Boolean = false) {
             .semantics { contentDescription = "Назад" }
             .clickable(role = Role.Button, onClick = onBack),
         contentAlignment = Alignment.Center,
-    ) { GuideGlyph(Glyph.LEFT, if (dark) Card else Ink, Modifier.size(22.dp)) }
+    ) { GuideGlyph(Glyph.LEFT, if (dark) OnNight else Ink, Modifier.size(18.dp)) }
 }
 
 @Composable
@@ -89,10 +110,12 @@ internal fun GuideAction(
     style: ActionStyle = ActionStyle.FILLED,
     icon: Glyph? = null,
     arrow: Boolean = false,
+    radius: Int = 9,
+    height: Int = 52,
 ) {
     val background = when (style) {
-        ActionStyle.FILLED -> Ink
-        ActionStyle.LIME -> Lime
+        ActionStyle.FILLED -> ActionDark
+        ActionStyle.ACCENT -> Yellow
         else -> Color.Transparent
     }
     val outline = when (style) {
@@ -100,23 +123,23 @@ internal fun GuideAction(
         ActionStyle.DARK_OUTLINE -> NightBorder
         else -> Color.Transparent
     }
-    val foreground = if (style == ActionStyle.FILLED || style == ActionStyle.DARK_OUTLINE) Card else Ink
-    val shape = RoundedCornerShape(9.dp)
+    val foreground = if (style == ActionStyle.FILLED || style == ActionStyle.DARK_OUTLINE) OnNight else Ink
+    val shape = RoundedCornerShape(radius.dp)
     Box(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(shape).background(background)
+        Modifier.fillMaxWidth().heightIn(min = height.dp).clip(shape).background(background)
             .border(1.dp, outline, shape).clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 15.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (icon == null && !arrow) {
-            Text(label, color = foreground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(label, color = foreground, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
         } else {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (icon != null) {
-                    GuideGlyph(icon, foreground, Modifier.size(18.dp))
-                    Spacer(Modifier.width(10.dp))
+                    GuideGlyph(icon, foreground, Modifier.size(20.dp))
+                    Spacer(Modifier.width(9.dp))
                 }
-                Text(label, Modifier.weight(1f), color = foreground, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(label, Modifier.weight(1f), color = foreground, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold)
                 if (arrow) GuideGlyph(Glyph.RIGHT, foreground, Modifier.size(18.dp))
             }
         }
@@ -124,15 +147,20 @@ internal fun GuideAction(
 }
 
 @Composable
-internal fun GrayCanvas(modifier: Modifier = Modifier) {
-    Box(modifier.background(CanvasGray))
+internal fun GuideImage(
+    drawable: Int,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+    scale: ContentScale = ContentScale.Crop,
+) {
+    Image(painterResource(drawable), description, modifier, contentScale = scale)
 }
 
 @Composable
 internal fun CameraHeaderShade() {
     Box(
-        Modifier.fillMaxWidth().height(116.dp)
-            .background(Brush.verticalGradient(listOf(Night.copy(alpha = .82f), Color.Transparent))),
+        Modifier.fillMaxWidth().height(118.dp)
+            .background(Brush.verticalGradient(listOf(Color(0xEB141C18), Color.Transparent))),
     )
 }
 

@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,16 +12,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -31,8 +27,6 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun CameraRequestSheet(
-    builtYear: Int,
-    dismantledYear: Int,
     path: String,
     api: GuideApi,
     onDismiss: () -> Unit,
@@ -50,7 +44,7 @@ internal fun CameraRequestSheet(
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         Box(
-            Modifier.matchParentSize().background(Ink.copy(alpha = .72f))
+            Modifier.matchParentSize().background(Scrim)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
         )
         Column(
@@ -58,24 +52,23 @@ internal fun CameraRequestSheet(
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(Card)
                 .pointerInput(Unit) { detectTapGestures(onTap = {}) }
                 .verticalScroll(rememberScrollState())
-                .padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+                .padding(start = 22.dp, end = 22.dp, top = 12.dp, bottom = 6.dp),
         ) {
             SheetHandle()
-            Spacer(Modifier.height(14.dp))
-            MonumentYears(builtYear, dismantledYear)
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider(color = Border)
+            Spacer(Modifier.height(12.dp))
+            GuideImage(R.drawable.camera_badge, Modifier.size(52.dp), scale = ContentScale.Fit)
+            Spacer(Modifier.height(23.dp))
             GuideData(path, onDismiss, api::ar, modal = true) { guide ->
-                Text(guide.title, color = Ink, fontSize = 31.sp, lineHeight = 37.sp, letterSpacing = (-.8).sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(13.dp))
-                Text(guide.instruction + "\nНа месте фундамента появится модель\nхрама.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
-                Spacer(Modifier.height(25.dp))
+                Text(guide.title, color = Ink, fontSize = 31.sp, lineHeight = 38.sp, letterSpacing = (-.6).sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(14.dp))
+                Text(guide.instruction + "\nНа месте фундамента появится модель храма.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
+                Spacer(Modifier.height(27.dp))
                 if (denied) {
                     Text("Разрешите доступ к камере в настройках или продолжите без камеры.", color = Muted, fontSize = 13.sp)
                     Spacer(Modifier.height(8.dp))
                 }
                 GuideAction(
-                    "Разрешить камеру",
+                    "Разрешить доступ к камере",
                     {
                         if (context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                             onCamera(guide)
@@ -84,11 +77,12 @@ internal fun CameraRequestSheet(
                             launcher.launch(Manifest.permission.CAMERA)
                         }
                     },
-                    icon = Glyph.CAMERA, arrow = true,
+                    style = ActionStyle.ACCENT, icon = Glyph.CAMERA, arrow = true, radius = 16,
                 )
                 Spacer(Modifier.height(10.dp))
-                GuideAction("Смотреть без камеры", { onWithoutCamera(guide) }, ActionStyle.OUTLINE)
-                GuideAction("Вернуться к памятнику", onDismiss, ActionStyle.PLAIN)
+                GuideAction("Смотреть без камеры", { onWithoutCamera(guide) }, ActionStyle.OUTLINE, radius = 16, height = 49)
+                Spacer(Modifier.height(6.dp))
+                GuideAction("Вернуться к памятнику", onDismiss, ActionStyle.PLAIN, height = 44)
             }
         }
     }
@@ -96,47 +90,34 @@ internal fun CameraRequestSheet(
 
 @Composable
 internal fun ScanScreen(onBack: () -> Unit, onShowComparison: () -> Unit, onMissingMark: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(CanvasGray)) {
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            CameraHeaderShade()
-            Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 25.dp)) {
-                GuideHeader("Поиск метки", onBack, dark = true)
-            }
-            Box(
-                Modifier.align(Alignment.Center).offset(y = maxHeight * .10f)
-                    .size(width = minOf(232.dp, maxWidth * .72f), height = minOf(336.dp, maxHeight * .72f)),
-            ) {
-                Canvas(Modifier.fillMaxSize()) {
-                    val arm = 22.dp.toPx()
-                    val right = size.width
-                    val bottom = size.height
-                    val corners = Path().apply {
-                        moveTo(0f, arm)
-                        lineTo(0f, 0f)
-                        lineTo(arm, 0f)
-                        moveTo(right - arm, 0f)
-                        lineTo(right, 0f)
-                        lineTo(right, arm)
-                        moveTo(right, bottom - arm)
-                        lineTo(right, bottom)
-                        lineTo(right - arm, bottom)
-                        moveTo(arm, bottom)
-                        lineTo(0f, bottom)
-                        lineTo(0f, bottom - arm)
-                    }
-                    drawPath(corners, Card, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
-                }
-            }
+    BoxWithConstraints(Modifier.fillMaxSize().background(Night)) {
+        GuideImage(R.drawable.lazarus_sign, Modifier.matchParentSize(), "Информационный стенд у церкви Лазаря")
+        CameraHeaderShade()
+        GuideImage(
+            R.drawable.scan_corners,
+            Modifier.align(Alignment.TopCenter).offset(y = maxHeight * (188f / 844f))
+                .size(maxWidth * (236f / 390f), maxHeight * (338f / 844f)),
+            scale = ContentScale.FillBounds,
+        )
+        Box(
+            Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.statusBars)
+                .padding(start = 20.dp, end = 20.dp, top = 25.dp),
+        ) {
+            GuideHeader("Поиск метки", onBack, dark = true)
         }
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-            .background(Night).padding(start = 22.dp, end = 22.dp, top = 24.dp, bottom = 16.dp)) {
-            Text("Наведите на метку", color = Card, fontSize = 29.sp, lineHeight = 35.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+                .background(Night).windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(start = 22.dp, end = 22.dp, top = 24.dp, bottom = 11.dp),
+        ) {
+            Text("Наведите на метку", color = OnNight, fontSize = 29.sp, lineHeight = 36.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-.6).sp)
             Spacer(Modifier.height(5.dp))
-            Text("Совместите метку у стенда с рамкой.", color = NightText, fontSize = 14.sp, lineHeight = 20.sp)
-            Spacer(Modifier.height(25.dp))
-            GuideAction("Показать сравнение", onShowComparison, ActionStyle.LIME, Glyph.SCAN, arrow = true)
+            Text("Совместите метку у стенда с рамкой.", color = NightText, fontSize = 14.sp, lineHeight = 17.sp)
+            Spacer(Modifier.height(27.dp))
+            GuideAction("Показать сравнение", onShowComparison, ActionStyle.ACCENT, Glyph.SCAN, arrow = true, height = 51)
             Spacer(Modifier.height(9.dp))
-            GuideAction("Не вижу метку", onMissingMark, ActionStyle.DARK_OUTLINE)
+            GuideAction("Не вижу метку", onMissingMark, ActionStyle.DARK_OUTLINE, height = 49)
         }
     }
 }

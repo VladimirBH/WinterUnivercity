@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
@@ -35,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,23 +44,30 @@ import androidx.core.view.WindowCompat
 import java.io.Serializable
 import java.util.Locale
 
-private val Rust = Color(0xFF913F29)
 private val Park = Color(0xFFEDF2EA)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(0xFFF4F6F2.toInt(), 0xFFF4F6F2.toInt()),
-            navigationBarStyle = SystemBarStyle.light(0xFFF4F6F2.toInt(), 0xFFF4F6F2.toInt()),
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Ink, onPrimary = Card, background = Paper, onBackground = Ink)) {
-                ThroughTheAges { immersive, dimmed ->
-                    val bars = WindowCompat.getInsetsController(window, window.decorView)
-                    bars.isAppearanceLightStatusBars = !immersive && !dimmed
-                    bars.isAppearanceLightNavigationBars = !immersive
+                ProvideTextStyle(
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = GuideBodyFont,
+                        letterSpacing = 0.sp,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    ),
+                ) {
+                    ThroughTheAges { immersive, dimmed ->
+                        val bars = WindowCompat.getInsetsController(window, window.decorView)
+                        bars.isAppearanceLightStatusBars = !immersive && !dimmed
+                        bars.isAppearanceLightNavigationBars = !immersive
+                    }
                 }
             }
         }
@@ -109,7 +118,8 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
         else -> Paper
     }
     Box(Modifier.fillMaxSize().background(background)) {
-        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        val screenInsets = if (immersive) WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal) else WindowInsets.safeDrawing
+        Box(Modifier.fillMaxSize().windowInsetsPadding(screenInsets)) {
             val path = destination.path
             when (destination.screen) {
                 Screen.MAP -> GuideData(path, load = api::map) { map ->
@@ -158,7 +168,7 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
             }
             cameraRequest?.let { request ->
                 CameraRequestSheet(
-                    request.subject.builtYear, request.subject.dismantledYear, request.arPath, api,
+                    request.arPath, api,
                     onDismiss = { cameraRequest = null },
                     onCamera = { ar ->
                         cameraRequest = null
@@ -172,7 +182,7 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
             }
         }
         if (cameraRequest != null) {
-            Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(Ink.copy(alpha = .72f)))
+            Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).background(Scrim))
         }
     }
 }
@@ -186,16 +196,16 @@ private fun MapScreen(map: GuideMap, onOpen: (String) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(map.title, color = Ink, fontSize = 34.sp, lineHeight = 39.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.15).sp)
-                Text(map.city, color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text(map.title, color = Ink, fontSize = 33.sp, lineHeight = 41.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-1.05).sp)
+                Text(map.city, color = Muted, fontSize = 13.sp, lineHeight = 16.sp)
             }
             if (first != null) {
                 Box(
-                    Modifier.size(44.dp).clip(RoundedCornerShape(11.dp)).background(Lime)
+                    Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(PaleYellow)
                         .semantics { contentDescription = "Открыть памятник" }
                         .clickable(role = Role.Button) { onOpen(first.card) },
                     contentAlignment = Alignment.Center,
-                ) { GuideGlyph(Glyph.CHURCH, Rust, Modifier.size(22.dp)) }
+                ) { GuideGlyph(Glyph.CHURCH, Ink, Modifier.size(24.dp)) }
             }
         }
         NeighborhoodMap(map, Modifier.weight(1f).fillMaxWidth(), onOpen)
@@ -222,7 +232,7 @@ private fun NeighborhoodMap(map: GuideMap, modifier: Modifier, onMonumentClick: 
             drawPath(path, Color(0xFF466331), style = routeStyle)
             val center = Offset(start.x * size.width, start.y * size.height)
             drawCircle(Card, 12.dp.toPx(), center)
-            drawCircle(Color(0xFFDCEBA5), 10.dp.toPx(), center)
+            drawCircle(Color(0xFFFFE99A), 10.dp.toPx(), center)
             drawCircle(Color(0xFF426139), 4.5.dp.toPx(), center)
         }
         Text("Кожевники", Modifier.offset(maxWidth * .05f, maxHeight * .04f), color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -258,7 +268,7 @@ private fun NeighborhoodMap(map: GuideMap, modifier: Modifier, onMonumentClick: 
                             cubicTo(48f, 37f, 33f, 50f, 25f, 61f)
                             close()
                         }
-                        drawPath(pin, Rust)
+                        drawPath(pin, Yellow)
                         drawPath(pin, Card, style = Stroke(width = 2.5f))
                     }
                 }
@@ -299,14 +309,14 @@ private fun MonumentCard(marker: Marker, onOpen: () -> Unit) {
         SheetHandle()
         Spacer(Modifier.height(15.dp))
         Row(verticalAlignment = Alignment.Top) {
-            GrayCanvas(Modifier.size(77.dp).clip(RoundedCornerShape(8.dp)))
+            GuideImage(R.drawable.lazarus_today, Modifier.size(77.dp).clip(RoundedCornerShape(8.dp)))
             Column(Modifier.padding(start = 15.dp, top = 4.dp)) {
-                Text(marker.title, color = Ink, fontSize = 24.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.65).sp)
+                Text(marker.title, color = Ink, fontSize = 24.sp, lineHeight = 28.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-.65).sp)
                 Text(marker.subtitle, Modifier.padding(top = 5.dp), color = Muted, fontSize = 14.sp, lineHeight = 19.sp)
             }
         }
         Spacer(Modifier.height(21.dp))
-        GuideAction("Открыть карточку", onOpen, icon = Glyph.CHURCH, arrow = true)
+        GuideAction("Открыть карточку", onOpen, ActionStyle.ACCENT, Glyph.CHURCH, arrow = true, radius = 16)
     }
 }
 
@@ -319,11 +329,11 @@ internal fun ColumnScope.SheetHandle() {
 internal fun MonumentYears(built: Int, dismantled: Int) {
     Row(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth(.437f)) {
-            Text(built.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+            Text(built.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold)
             Text("Построена", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
         }
         Column {
-            Text(dismantled.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+            Text(dismantled.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold)
             Text("Разобрана", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
         }
     }
@@ -336,9 +346,13 @@ private fun MonumentDetails(monument: Monument, onBack: () -> Unit, onAr: () -> 
         Spacer(Modifier.height(21.dp))
         Text(monument.ensemble, color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
         Spacer(Modifier.height(7.dp))
-        Text(monument.title, color = Ink, fontSize = 35.sp, lineHeight = 41.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.05).sp)
+        Text(monument.title, color = Ink, fontSize = 35.sp, lineHeight = 41.sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold, letterSpacing = (-1.05).sp)
         Spacer(Modifier.height(14.dp))
-        GrayCanvas(Modifier.fillMaxWidth().aspectRatio(350f / 219f).clip(RoundedCornerShape(11.dp)))
+        GuideImage(
+            R.drawable.lazarus_today,
+            Modifier.fillMaxWidth().aspectRatio(350f / 219f).clip(RoundedCornerShape(12.dp)),
+            description = "Контур церкви Лазаря",
+        )
         Spacer(Modifier.height(17.dp))
         MonumentYears(monument.builtYear, monument.dismantledYear)
         Spacer(Modifier.height(16.dp))
@@ -357,8 +371,8 @@ private fun MonumentDetails(monument: Monument, onBack: () -> Unit, onAr: () -> 
         }
         Spacer(Modifier.height(22.dp))
         Spacer(Modifier.weight(1f))
-        GuideAction("Посмотреть в AR", onAr, icon = Glyph.SCAN, arrow = true)
+        GuideAction("Увидеть храм в AR", onAr, ActionStyle.ACCENT, Glyph.SCAN, arrow = true, radius = 16)
         Spacer(Modifier.height(10.dp))
-        GuideAction("Как восстановили облик", onSource, ActionStyle.OUTLINE, icon = Glyph.DOCUMENT)
+        GuideAction("Как восстановили облик", onSource, ActionStyle.OUTLINE, icon = Glyph.DOCUMENT, height = 50)
     }
 }
