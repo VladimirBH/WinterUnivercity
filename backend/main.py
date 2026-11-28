@@ -30,7 +30,8 @@ async def lifespan(app: FastAPI):
                 raise RuntimeError(
                     f"Unsupported SQLite schema in {path}: expected {store.SCHEMA_VERSION}, got {version}"
                 )
-            database.execute("SELECT id FROM maps LIMIT 1").fetchone()
+            if database.execute("SELECT id FROM maps LIMIT 1").fetchone() is None:
+                raise RuntimeError(f"SQLite catalog {path} has no maps")
     except sqlite3.Error as error:
         raise RuntimeError(f"Could not read SQLite catalog {path}: {error}") from error
     app.state.database_path = path
