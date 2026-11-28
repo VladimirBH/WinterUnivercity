@@ -7,6 +7,10 @@ plugins {
 val catalogAssets = layout.buildDirectory.dir("generated/catalogAssets")
 val bundleCatalog by tasks.registering(Sync::class) {
     from(rootProject.file("../backend/catalog.json"))
+    from(rootProject.file("../3dModeling")) {
+        include("Lazarus_1862_AR.glb", "Peter_Paul_Kozhevniki_XIX_v8.glb")
+        into("models")
+    }
     into(catalogAssets)
 }
 val mapKitApiKey = providers.environmentVariable("MAPKIT_API_KEY")
@@ -22,7 +26,7 @@ android {
 
     defaultConfig {
         applicationId = "ru.winterunivercity.throughtheages"
-        minSdk = if (mapKitEnabled) 26 else 23
+        minSdk = if (mapKitEnabled) 26 else 24
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -63,6 +67,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    implementation("io.github.sceneview:arsceneview:4.18.0")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
     if (mapKitEnabled) implementation("com.yandex.android:maps.mobile:4.45.0-lite")
 }

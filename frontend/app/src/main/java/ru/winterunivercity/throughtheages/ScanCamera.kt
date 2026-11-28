@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -20,14 +19,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.ar.core.ArCoreApk
 
 @Composable
 internal fun CameraRequestSheet(
@@ -41,11 +38,10 @@ internal fun CameraRequestSheet(
 ) {
     val context = LocalContext.current
     var denied by rememberSaveable(path) { mutableStateOf(false) }
-    var pending by remember { mutableStateOf<ArGuide?>(null) }
+    var cameraRequested by rememberSaveable(path) { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         denied = !granted
-        if (granted) pending?.let(onCamera)
-        pending = null
+        cameraRequested = granted
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -66,77 +62,52 @@ internal fun CameraRequestSheet(
             Spacer(Modifier.height(16.dp))
             HorizontalDivider(color = Border)
             GuideData(path, onDismiss, api::ar, modal = true) { guide ->
-                Text(guide.title, color = Ink, fontSize = 31.sp, lineHeight = 37.sp, letterSpacing = (-.8).sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(13.dp))
-                Text(guide.instruction + "\nНа месте фундамента появится модель\nхрама.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
-                Spacer(Modifier.height(25.dp))
-                if (denied) {
-                    Text("Разрешите доступ к камере в настройках или продолжите без камеры.", color = Muted, fontSize = 13.sp)
-                    Spacer(Modifier.height(8.dp))
+                val availability by produceState<ArCoreApk.Availability?>(null, context, guide.model) {
+                    if (guide.model != null) {
+                        ArCoreApk.getInstance().checkAvailabilityAsync(context) { value = it }
+                    }
                 }
-                GuideAction(
-                    "Разрешить камеру",
-                    {
-                        if (context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                            onCamera(guide)
-                        } else {
-                            pending = guide
-                            launcher.launch(Manifest.permission.CAMERA)
-                        }
-                    },
-                    icon = Glyph.CAMERA, arrow = true,
-                )
+                LaunchedEffect(cameraRequested) {
+                    if (cameraRequested) {
+                        cameraRequested = false
+                        if (guide.model != null) onCamera(guide)
+                    }
+                }
+                Text("Посмотреть в AR", color = Ink, fontSize = 31.sp, lineHeight = 37.sp, letterSpacing = (-.8).sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(13.dp))
+                if (guide.model == null) {
+                    Text("3D-модель этого памятника недоступна.", color = Muted)
+                } else if (availability == ArCoreApk.Availability.UNSUPPORTED_DEVICE_NOT_CAPABLE) {
+                    Text("Устройство не поддерживает ARCore.", color = Muted)
+                } else if (availability == null) {
+                    Text("Проверяем поддержку AR…", color = Muted)
+                } else {
+                    Text(
+                        "Наведите камеру на пол или стол, чтобы разместить модель храма.",
+                        color = Muted, fontSize = 15.sp, lineHeight = 22.sp,
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    if (denied) {
+                        Text("Разрешите доступ к камере в настройках или продолжите без камеры.", color = Muted, fontSize = 13.sp)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    val hasPermission = context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    GuideAction(
+                        if (hasPermission) "Открыть камеру" else "Разрешить камеру",
+                        {
+                            if (context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                onCamera(guide)
+                            } else {
+                                launcher.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        icon = Glyph.CAMERA, arrow = true,
+                    )
+                }
                 Spacer(Modifier.height(10.dp))
                 GuideAction("Смотреть без камеры", { onWithoutCamera(guide) }, ActionStyle.OUTLINE)
                 GuideAction("Вернуться к памятнику", onDismiss, ActionStyle.PLAIN)
             }
-        }
-    }
-}
-
-@Composable
-internal fun ScanScreen(onBack: () -> Unit, onShowComparison: () -> Unit, onMissingMark: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(CanvasGray)) {
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            CameraHeaderShade()
-            Box(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 25.dp)) {
-                GuideHeader("Поиск метки", onBack, dark = true)
-            }
-            Box(
-                Modifier.align(Alignment.Center).offset(y = maxHeight * .10f)
-                    .size(width = minOf(232.dp, maxWidth * .72f), height = minOf(336.dp, maxHeight * .72f)),
-            ) {
-                Canvas(Modifier.fillMaxSize()) {
-                    val arm = 22.dp.toPx()
-                    val right = size.width
-                    val bottom = size.height
-                    val corners = Path().apply {
-                        moveTo(0f, arm)
-                        lineTo(0f, 0f)
-                        lineTo(arm, 0f)
-                        moveTo(right - arm, 0f)
-                        lineTo(right, 0f)
-                        lineTo(right, arm)
-                        moveTo(right, bottom - arm)
-                        lineTo(right, bottom)
-                        lineTo(right - arm, bottom)
-                        moveTo(arm, bottom)
-                        lineTo(0f, bottom)
-                        lineTo(0f, bottom - arm)
-                    }
-                    drawPath(corners, Card, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
-                }
-            }
-        }
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-            .background(Night).padding(start = 22.dp, end = 22.dp, top = 24.dp, bottom = 16.dp)) {
-            Text("Наведите на метку", color = Card, fontSize = 29.sp, lineHeight = 35.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
-            Spacer(Modifier.height(5.dp))
-            Text("Совместите метку у стенда с рамкой.", color = NightText, fontSize = 14.sp, lineHeight = 20.sp)
-            Spacer(Modifier.height(25.dp))
-            GuideAction("Показать сравнение", onShowComparison, ActionStyle.LIME, Glyph.SCAN, arrow = true)
-            Spacer(Modifier.height(9.dp))
-            GuideAction("Не вижу метку", onMissingMark, ActionStyle.DARK_OUTLINE)
         }
     }
 }

@@ -1,5 +1,6 @@
 package ru.winterunivercity.throughtheages
 
+import android.graphics.Color.TRANSPARENT
 import android.os.Bundle
 import android.os.Build
 import androidx.activity.ComponentActivity
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(0xFFF4F6F2.toInt(), 0xFFF4F6F2.toInt()),
+            statusBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(0xFFF4F6F2.toInt(), 0xFFF4F6F2.toInt()),
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
@@ -66,7 +67,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { MAP, MONUMENT, SCAN, CAMERA_COMPARISON, OFFLINE_COMPARISON, SOURCE }
+private enum class Screen { MAP, MONUMENT, AR, OFFLINE_COMPARISON, SOURCE }
 private data class Subject(val title: String, val builtYear: Int?, val dismantledYear: Int?) : Serializable {
     val attribution get() = title.uppercase(Locale.ROOT) + (builtYear?.let { " · $it" } ?: "")
 }
@@ -74,7 +75,7 @@ private data class Destination(
     val screen: Screen,
     val path: String,
     val subject: Subject? = null,
-    val comparisonPath: String? = null,
+    val model: ChurchModel? = null,
 ) : Serializable
 private data class CameraRequest(val arPath: String, val subject: Subject) : Serializable
 
@@ -84,11 +85,10 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
     val api = remember(context) { GuideApi(context) }
     var navigation by rememberSaveable { mutableStateOf(arrayListOf(Destination(Screen.MAP, "/api/v1/map"))) }
     var cameraRequest by rememberSaveable { mutableStateOf<CameraRequest?>(null) }
-    var selectedEra by rememberSaveable { mutableStateOf<String?>(null) }
 
     val destination = navigation.last()
     val parent = navigation.getOrNull(navigation.lastIndex - 1)
-    val immersive = destination.screen == Screen.SCAN || destination.screen == Screen.CAMERA_COMPARISON
+    val immersive = destination.screen == Screen.AR
     val onBack: () -> Unit = {
         if (cameraRequest != null) cameraRequest = null
         else if (navigation.size > 1) navigation = ArrayList(navigation.dropLast(1))
@@ -98,7 +98,7 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
     }
     fun openOffline(path: String, subject: Subject) {
         val screen = Destination(Screen.OFFLINE_COMPARISON, path, subject)
-        val previous = if (navigation.last().screen == Screen.SCAN) navigation.dropLast(1) else navigation
+        val previous = if (navigation.last().screen == Screen.AR) navigation.dropLast(1) else navigation
         navigation = ArrayList(if (previous.last() == screen) previous else previous + screen)
     }
 
@@ -124,23 +124,14 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
                         onSource = { open(Destination(Screen.SOURCE, monument.source, subject)) },
                     )
                 }
-                Screen.SCAN -> {
+                Screen.AR -> {
                     val subject = requireNotNull(destination.subject)
-                    val comparison = requireNotNull(destination.comparisonPath)
-                    ScanScreen(
+                    ChurchArScreen(
+                        subject.title,
+                        requireNotNull(destination.model),
                         onBack,
-                        onShowComparison = {
-                            selectedEra = null
-                            open(Destination(Screen.CAMERA_COMPARISON, comparison, subject))
-                        },
-                        onMissingMark = { openOffline(comparison, subject) },
+                        onWithoutCamera = { openOffline(path, subject) },
                     )
-                }
-                Screen.CAMERA_COMPARISON -> GuideData(path, onBack, api::comparison) { comparison ->
-                    val subject = requireNotNull(destination.subject)
-                    CameraComparisonScreen(comparison, subject.title, selectedEra, { selectedEra = it }, onBack) {
-                        open(Destination(Screen.SOURCE, comparison.source, subject))
-                    }
                 }
                 Screen.OFFLINE_COMPARISON -> GuideData(path, onBack, api::comparison) { comparison ->
                     val subject = requireNotNull(destination.subject)
@@ -153,7 +144,7 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
                 Screen.SOURCE -> GuideData(path, onBack, api::source) { source ->
                     HistoricalSourceScreen(
                         source, requireNotNull(destination.subject).attribution,
-                        parent?.screen in setOf(Screen.CAMERA_COMPARISON, Screen.OFFLINE_COMPARISON), onBack,
+                        parent?.screen == Screen.OFFLINE_COMPARISON, onBack,
                     )
                 }
             }
@@ -162,8 +153,10 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
                     request.subject.builtYear, request.subject.dismantledYear, request.arPath, api,
                     onDismiss = { cameraRequest = null },
                     onCamera = { ar ->
-                        cameraRequest = null
-                        open(Destination(Screen.SCAN, request.arPath, request.subject, ar.fallbackUrl))
+                        ar.model?.let { model ->
+                            cameraRequest = null
+                            open(Destination(Screen.AR, ar.fallbackUrl, request.subject, model))
+                        }
                     },
                     onWithoutCamera = { ar ->
                         cameraRequest = null

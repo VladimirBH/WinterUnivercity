@@ -58,10 +58,11 @@ internal data class HistoricalSource(
 )
 
 internal data class ArGuide(
-    val title: String,
-    val instruction: String,
     val fallbackUrl: String,
+    val model: ChurchModel?,
 )
+
+internal data class ChurchModel(val asset: String, val label: String) : java.io.Serializable
 
 internal class GuideApi(context: Context) {
     private val assets = context.applicationContext.assets
@@ -122,10 +123,22 @@ internal class GuideApi(context: Context) {
     }
 
     suspend fun ar(path: String): ArGuide = document(path) {
+        val models = optJSONArray("models")?.items { getJSONObject(it) }.orEmpty()
+        val model = models.firstNotNullOfOrNull {
+            bundledModel(it.getString("modelUrl"), it.getString("label"))
+        }
         ArGuide(
-            getString("title"), getString("instruction"),
             getJSONObject("fallback").getString("url"),
+            model ?: bundledModel(optString("modelUrl"), "Историческая реконструкция"),
         )
+    }
+
+    private fun bundledModel(url: String, label: String): ChurchModel? {
+        val prefix = "/media/3dModeling/"
+        if (!url.startsWith(prefix)) return null
+        val filename = url.removePrefix(prefix)
+        if (!filename.endsWith(".glb") || filename !in assets.list("models").orEmpty()) return null
+        return ChurchModel("models/$filename", label)
     }
 
     private suspend fun <T> document(path: String, parse: JSONObject.() -> T): T = withContext(Dispatchers.IO) {

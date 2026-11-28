@@ -3,8 +3,6 @@ package ru.winterunivercity.throughtheages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -14,7 +12,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -82,7 +79,6 @@ internal fun OfflineComparisonScreen(
         GuideHeader("Без камеры", onBack)
         Spacer(Modifier.height(19.dp))
         Text(comparison.title, color = Ink, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.2).sp)
-        Text("Церковь Лазаря сегодня и в XV веке.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
         Spacer(Modifier.height(26.dp))
         comparison.eras.forEachIndexed { index, era ->
             if (index > 0) Spacer(Modifier.height(12.dp))
@@ -102,64 +98,6 @@ internal fun OfflineComparisonScreen(
         GuideAction("Как восстановили облик", onSource, icon = Glyph.DOCUMENT, arrow = true)
         Spacer(Modifier.height(10.dp))
         GuideAction("Попробовать с камерой", onCamera, ActionStyle.OUTLINE, icon = Glyph.CAMERA)
-    }
-}
-
-@Composable
-internal fun CameraComparisonScreen(
-    comparison: Comparison,
-    title: String,
-    selectedEra: String?,
-    onSelect: (String) -> Unit,
-    onBack: () -> Unit,
-    onSource: () -> Unit,
-) {
-    val era = comparison.eras.firstOrNull { it.id == selectedEra } ?: comparison.eras.firstOrNull()
-    Column(Modifier.fillMaxSize().background(CanvasGray)) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            CameraHeaderShade()
-            Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 25.dp)) {
-                GuideHeader(title, onBack, dark = true)
-                Spacer(Modifier.height(11.dp))
-                Row(
-                    Modifier.background(Night.copy(alpha = .92f), RoundedCornerShape(5.dp))
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    val reconstructed = era?.id == "xv"
-                    GuideGlyph(if (reconstructed) Glyph.LAYERS else Glyph.CHECK, Card, Modifier.size(14.dp))
-                    Text(if (reconstructed) "Реконструкция" else "Метка найдена", color = Card, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp))
-            .background(Night).padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 12.dp)) {
-            if (era != null) {
-                Text(era.title, color = Card, fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.8).sp)
-                Spacer(Modifier.height(7.dp))
-                Text(era.description, color = NightText, fontSize = 14.sp, lineHeight = 20.sp)
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFF29362F)).padding(5.dp).selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                for (item in comparison.eras) {
-                    val selected = item.id == era?.id
-                    Box(
-                        Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(7.dp))
-                            .background(if (selected) Lime else Color.Transparent)
-                            .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(item.id) }),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(item.label, color = if (selected) Ink else Card, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            GuideAction("Как восстановили облик", onSource, ActionStyle.DARK_OUTLINE, icon = Glyph.DOCUMENT)
-        }
     }
 }
 
