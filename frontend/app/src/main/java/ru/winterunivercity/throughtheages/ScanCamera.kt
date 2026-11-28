@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun CameraRequestSheet(
-    builtYear: Int,
-    dismantledYear: Int,
+    builtYear: Int?,
+    dismantledYear: Int?,
     path: String,
     api: GuideApi,
     onDismiss: () -> Unit,

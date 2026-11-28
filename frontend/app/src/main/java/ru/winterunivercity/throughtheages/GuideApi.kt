@@ -30,8 +30,8 @@ internal data class GuideMap(
 internal data class Monument(
     val title: String,
     val ensemble: String,
-    val builtYear: Int,
-    val dismantledYear: Int,
+    val builtYear: Int?,
+    val dismantledYear: Int?,
     val description: String,
     val address: String,
     val source: String,
@@ -89,7 +89,7 @@ internal class GuideApi(context: Context) {
     suspend fun monument(path: String): Monument = document(path) {
         Monument(
             getString("title"), getString("ensemble"),
-            getInt("builtYear"), getInt("dismantledYear"), getString("description"),
+            getNullableYear("builtYear"), getNullableYear("dismantledYear"), getString("description"),
             getString("address"),
             getString("source"), getString("ar"),
         )
@@ -168,6 +168,8 @@ internal class GuideApi(context: Context) {
         else -> throw IOException("Catalog entry unavailable offline")
     }
 }
+
+private fun JSONObject.getNullableYear(key: String): Int? = if (isNull(key)) null else getInt(key)
 
 private inline fun <T> JSONArray.items(parse: JSONArray.(Int) -> T): List<T> =
     List(length()) { parse(it) }

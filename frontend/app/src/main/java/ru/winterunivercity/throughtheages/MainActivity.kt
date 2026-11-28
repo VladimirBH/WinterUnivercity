@@ -66,8 +66,8 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Screen { MAP, MONUMENT, SCAN, CAMERA_COMPARISON, OFFLINE_COMPARISON, SOURCE }
-private data class Subject(val title: String, val builtYear: Int, val dismantledYear: Int) : Serializable {
-    val attribution get() = title.uppercase(Locale.ROOT) + " · " + builtYear
+private data class Subject(val title: String, val builtYear: Int?, val dismantledYear: Int?) : Serializable {
+    val attribution get() = title.uppercase(Locale.ROOT) + (builtYear?.let { " · $it" } ?: "")
 }
 private data class Destination(
     val screen: Screen,
@@ -316,15 +316,21 @@ internal fun ColumnScope.SheetHandle() {
 }
 
 @Composable
-internal fun MonumentYears(built: Int, dismantled: Int) {
+internal fun MonumentYears(built: Int?, dismantled: Int?) {
+    if (built == null && dismantled == null) return
+
     Row(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth(.437f)) {
-            Text(built.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
-            Text("Построена", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+        if (built != null) {
+            Column(Modifier.fillMaxWidth(.437f)) {
+                Text(built.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+                Text("Построена", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+            }
         }
-        Column {
-            Text(dismantled.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
-            Text("Разобрана", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+        if (dismantled != null) {
+            Column {
+                Text(dismantled.toString(), color = Ink, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+                Text("Разобрана", Modifier.padding(top = 4.dp), color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+            }
         }
     }
 }
