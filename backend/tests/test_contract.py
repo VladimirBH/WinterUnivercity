@@ -10,6 +10,7 @@ import unittest
 from contextlib import closing
 from http.client import HTTPConnection
 from pathlib import Path
+from shutil import copyfile
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
@@ -25,6 +26,10 @@ LAZARUS = "tserkov-lazarya"
 PETER_AND_PAUL = "tserkov-petra-i-pavla-v-kozhevnikah"
 COMPLEX = "tserkvi-na-bredova-zverinoy"
 MONUMENTS = {LAZARUS, PETER_AND_PAUL}
+GEOGRAPHIC_COORDINATES = {
+    LAZARUS: (58.533963, 31.278695),
+    PETER_AND_PAUL: (58.533154, 31.278862),
+}
 DATE_FIELDS = ("builtYear", "builtYearEnd", "dismantledYear")
 PETER_AND_PAUL_PHOTO = "/media/peter-paul-today.jpg"
 
@@ -39,6 +44,28 @@ class CatalogDatabaseTest(unittest.TestCase):
             with self.assertRaises(sqlite3.OperationalError) as failure:
                 database.execute("CREATE TABLE contract_read_only_probe (id INTEGER)")
             self.assertEqual(failure.exception.sqlite_errorcode, sqlite3.SQLITE_READONLY)
+
+    def test_map_without_geographic_coordinates_retains_schematic_data(self):
+        with TemporaryDirectory() as directory:
+            legacy_catalog = Path(directory) / "legacy.sqlite3"
+            copyfile(DATABASE, legacy_catalog)
+            with store.open_database(legacy_catalog) as database:
+                expected = store.guide_map(database)
+
+            with closing(sqlite3.connect(legacy_catalog)) as database:
+                database.execute("DROP TABLE map_marker_coordinates")
+                self.assertEqual(database.execute("PRAGMA user_version").fetchone()[0], 1)
+
+            for marker in expected["markers"]:
+                marker.update(latitude=None, longitude=None)
+            with store.open_database(legacy_catalog) as database:
+                self.assertEqual(store.guide_map(database), expected)
+
+    def test_offline_catalog_contains_only_the_lazarus_marker(self):
+        catalog = json.loads(DATABASE.with_name("catalog.json").read_text(encoding="utf-8"))
+        marker, = catalog["map"]["markers"]
+        self.assertEqual(marker["id"], LAZARUS)
+        self.assertEqual((marker["latitude"], marker["longitude"]), GEOGRAPHIC_COORDINATES[LAZARUS])
 
 
 class CatalogStartupTest(unittest.IsolatedAsyncioTestCase):
@@ -116,6 +143,10 @@ class CatalogHttpTest(unittest.TestCase):
         markers = {marker["id"]: marker for marker in guide_map["markers"]}
         self.assertEqual(set(markers), MONUMENTS)
         self.assertEqual(len(guide_map["markers"]), len(markers))
+        self.assertEqual(
+            {slug: (marker["latitude"], marker["longitude"]) for slug, marker in markers.items()},
+            GEOGRAPHIC_COORDINATES,
+        )
         self.assertEqual(markers[PETER_AND_PAUL]["thumbnail"], PETER_AND_PAUL_PHOTO)
         self.assertIsNone(guide_map["complex"])
         self.assertEqual(guide_map["coordinateSystem"], "schematic-normalized-top-left")

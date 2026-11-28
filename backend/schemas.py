@@ -16,6 +16,8 @@ class MonumentSummary(CatalogLink):
 class MapMarker(MonumentSummary):
     x: float
     y: float
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class Building(BaseModel):

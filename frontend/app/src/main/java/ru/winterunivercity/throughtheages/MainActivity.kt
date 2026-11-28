@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -180,6 +181,8 @@ private fun ThroughTheAges(updateBars: (Boolean, Boolean) -> Unit) {
 @Composable
 private fun MapScreen(map: GuideMap, onOpen: (String) -> Unit) {
     val first = map.markers.firstOrNull()
+    val geocodedMarkers = map.markers.filter { it.latitude != null && it.longitude != null }
+    var showSchematic by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().background(Paper).padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 10.dp),
@@ -198,7 +201,18 @@ private fun MapScreen(map: GuideMap, onOpen: (String) -> Unit) {
                 ) { GuideGlyph(Glyph.CHURCH, Rust, Modifier.size(22.dp)) }
             }
         }
-        NeighborhoodMap(map, Modifier.weight(1f).fillMaxWidth(), onOpen)
+        if (geocodedMarkers.isNotEmpty()) {
+            TextButton(
+                onClick = { showSchematic = !showSchematic },
+                modifier = Modifier.align(Alignment.End).padding(end = 12.dp),
+            ) { Text(if (showSchematic) "Карта города" else "Схема маршрута") }
+        }
+        val mapModifier = Modifier.weight(1f).fillMaxWidth()
+        if (showSchematic || geocodedMarkers.isEmpty()) {
+            NeighborhoodMap(map, mapModifier, onOpen)
+        } else {
+            CityMap(geocodedMarkers, mapModifier, onOpen)
+        }
         if (first != null) MonumentCard(first) { onOpen(first.card) }
     }
 }

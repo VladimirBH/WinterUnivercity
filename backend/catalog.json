@@ -60,7 +60,9 @@
         "thumbnail": "/media/today.jpg",
         "card": "/api/v1/monuments/tserkov-lazarya",
         "x": 0.48,
-        "y": 0.48
+        "y": 0.48,
+        "latitude": 58.533963,
+        "longitude": 31.278695
       }
     ],
     "route": {

@@ -17,6 +17,8 @@ internal data class Marker(
     val subtitle: String,
     val card: String,
     val position: Offset,
+    val latitude: Double?,
+    val longitude: Double?,
 )
 
 internal data class GuideMap(
@@ -76,6 +78,8 @@ internal class GuideApi(context: Context) {
                     marker.getString("subtitle"),
                     marker.getString("card"),
                     Offset(marker.getDouble("x").toFloat(), marker.getDouble("y").toFloat()),
+                    marker.optDouble("latitude").takeIf { it in -90.0..90.0 },
+                    marker.optDouble("longitude").takeIf { it in -180.0..180.0 },
                 )
             },
             route.getString("label"),

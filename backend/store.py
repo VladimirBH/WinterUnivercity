@@ -320,11 +320,24 @@ def guide_map(database: sqlite3.Connection, complex_: sqlite3.Row | None = None)
     if map_row is None:
         return None
 
-    # Keep the same monument columns on cards and map markers.
-    marker_query = f"SELECT marker.x, marker.y, {MONUMENT_COLUMNS} {MONUMENT_FROM}" + """
+    # Earlier catalogs at schema version 1 do not have the optional coordinate table.
+    has_coordinates = database.execute("""
+        SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'map_marker_coordinates'
+    """).fetchone() is not None
+    coordinate_columns = (
+        "coordinates.latitude, coordinates.longitude"
+        if has_coordinates else "NULL AS latitude, NULL AS longitude"
+    )
+    marker_query = f"""
+        SELECT marker.x, marker.y, {coordinate_columns}, {MONUMENT_COLUMNS} {MONUMENT_FROM}
         JOIN map_markers marker ON marker.monument_id = m.id
-        WHERE marker.map_id = ?
     """
+    if has_coordinates:
+        marker_query += """
+            LEFT JOIN map_marker_coordinates coordinates
+                ON coordinates.map_id = marker.map_id AND coordinates.monument_id = marker.monument_id
+        """
+    marker_query += " WHERE marker.map_id = ?"
     route_query = ROUTE_SELECT + " WHERE r.map_id = ?"
     params = (map_row["id"],)
     if complex_ is not None:
@@ -338,7 +351,16 @@ def guide_map(database: sqlite3.Connection, complex_: sqlite3.Row | None = None)
         "title": map_row["title"],
         "city": map_row["city"],
         "coordinateSystem": map_row["coordinate_system"],
-        "markers": [{**monument_summary(marker), "x": marker["x"], "y": marker["y"]} for marker in markers],
+        "markers": [
+            {
+                **monument_summary(marker),
+                "x": marker["x"],
+                "y": marker["y"],
+                "latitude": marker["latitude"],
+                "longitude": marker["longitude"],
+            }
+            for marker in markers
+        ],
         "route": route_detail(database, route) if route else {"label": "", "points": [], "stops": []},
         "complex": catalog_link("complexes", complex_["slug"], complex_["title"]) if complex_ else None,
     }
