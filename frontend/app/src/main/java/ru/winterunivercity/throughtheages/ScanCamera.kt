@@ -61,7 +61,7 @@ internal fun CameraRequestSheet(
             GuideData(path, onDismiss, api::ar, modal = true) { guide ->
                 Text(guide.title, color = Ink, fontSize = 31.sp, lineHeight = 38.sp, letterSpacing = (-.6).sp, fontFamily = GuideHeadingFont, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
-                Text(guide.instruction + "\nНа месте фундамента появится модель храма.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
+                Text(guide.instruction + "\nНа месте фундамента появится модель\nхрама.", color = Muted, fontSize = 15.sp, lineHeight = 22.sp)
                 Spacer(Modifier.height(27.dp))
                 if (denied) {
                     Text("Разрешите доступ к камере в настройках или продолжите без камеры.", color = Muted, fontSize = 13.sp)

@@ -205,7 +205,7 @@ private fun MapScreen(map: GuideMap, onOpen: (String) -> Unit) {
                         .semantics { contentDescription = "Открыть памятник" }
                         .clickable(role = Role.Button) { onOpen(first.card) },
                     contentAlignment = Alignment.Center,
-                ) { GuideGlyph(Glyph.CHURCH, Ink, Modifier.size(24.dp)) }
+                ) { GuideGlyph(Glyph.BRAND, Ink, Modifier.size(24.dp)) }
             }
         }
         NeighborhoodMap(map, Modifier.weight(1f).fillMaxWidth(), onOpen)
@@ -244,13 +244,7 @@ private fun NeighborhoodMap(map: GuideMap, modifier: Modifier, onMonumentClick: 
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
         ) {
             Text("С", color = Ink, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold)
-            Canvas(Modifier.size(18.dp)) {
-                val arrow = Path().apply {
-                    moveTo(size.width * .5f, 2f); lineTo(size.width * .82f, size.height * .86f)
-                    lineTo(size.width * .5f, size.height * .68f); lineTo(size.width * .18f, size.height * .86f); close()
-                }
-                drawPath(arrow, Color(0xFF315547), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
-            }
+            GuideGlyph(Glyph.COMPASS, Color(0xFF315547), Modifier.size(22.dp))
         }
         for (marker in map.markers) {
             Box(

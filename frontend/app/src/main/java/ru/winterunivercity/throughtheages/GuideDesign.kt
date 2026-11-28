@@ -1,6 +1,5 @@
 package ru.winterunivercity.throughtheages
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,14 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -60,7 +54,19 @@ internal val GuideBodyFont = guideFont(R.font.inter_variable, FontWeight.Normal,
 internal val GuideHeadingFont = guideFont(R.font.onest_variable, FontWeight.Bold)
 internal val GuideArchiveFont = guideFont(R.font.manrope_variable, FontWeight.Bold)
 
-internal enum class Glyph { LEFT, RIGHT, CAMERA, SCAN, DOCUMENT, CHURCH, PIN, CHECK, LAYERS }
+internal enum class Glyph(val drawable: Int) {
+    LEFT(R.drawable.icon_left),
+    RIGHT(R.drawable.icon_right),
+    CAMERA(R.drawable.icon_camera),
+    SCAN(R.drawable.icon_scan),
+    DOCUMENT(R.drawable.icon_document),
+    CHURCH(R.drawable.icon_church),
+    BRAND(R.drawable.icon_brand_header),
+    COMPASS(R.drawable.icon_compass),
+    PIN(R.drawable.icon_pin),
+    CHECK(R.drawable.icon_check),
+    LAYERS(R.drawable.icon_layers),
+}
 internal enum class ActionStyle { FILLED, OUTLINE, ACCENT, DARK_OUTLINE, PLAIN }
 
 @Composable
@@ -100,7 +106,7 @@ internal fun BackArrow(onBack: () -> Unit, dark: Boolean = false) {
             .semantics { contentDescription = "Назад" }
             .clickable(role = Role.Button, onClick = onBack),
         contentAlignment = Alignment.Center,
-    ) { GuideGlyph(Glyph.LEFT, if (dark) OnNight else Ink, Modifier.size(18.dp)) }
+    ) { GuideGlyph(Glyph.LEFT, if (dark) OnNight else Ink, Modifier.size(20.dp)) }
 }
 
 @Composable
@@ -166,53 +172,11 @@ internal fun CameraHeaderShade() {
 
 @Composable
 internal fun GuideGlyph(glyph: Glyph, tint: Color, modifier: Modifier) {
-    Canvas(modifier) {
-        scale(size.width / 24f, size.height / 24f, Offset.Zero) {
-            val outline = Path().apply {
-                when (glyph) {
-                    Glyph.LEFT -> { moveTo(14f, 5f); lineTo(7f, 12f); lineTo(14f, 19f); moveTo(7f, 12f); lineTo(21f, 12f) }
-                    Glyph.RIGHT -> { moveTo(10f, 5f); lineTo(17f, 12f); lineTo(10f, 19f); moveTo(3f, 12f); lineTo(17f, 12f) }
-                    Glyph.CAMERA -> {
-                        moveTo(3f, 7f); lineTo(8f, 7f); lineTo(10f, 4f); lineTo(14f, 4f)
-                        lineTo(16f, 7f); lineTo(21f, 7f); lineTo(21f, 19f); lineTo(3f, 19f); close()
-                    }
-                    Glyph.SCAN -> {
-                        moveTo(8f, 3f); lineTo(3f, 3f); lineTo(3f, 8f)
-                        moveTo(16f, 3f); lineTo(21f, 3f); lineTo(21f, 8f)
-                        moveTo(21f, 16f); lineTo(21f, 21f); lineTo(16f, 21f)
-                        moveTo(8f, 21f); lineTo(3f, 21f); lineTo(3f, 16f)
-                    }
-                    Glyph.DOCUMENT -> {
-                        moveTo(5f, 2f); lineTo(19f, 2f); lineTo(19f, 22f); lineTo(5f, 22f); close()
-                        moveTo(8f, 18f); lineTo(8f, 12f)
-                        cubicTo(10.7f, 6.7f, 13.3f, 6.7f, 16f, 12f); lineTo(16f, 18f); close()
-                    }
-                    Glyph.CHURCH -> {
-                        moveTo(4f, 21f); lineTo(4f, 12f); cubicTo(4f, 8.7f, 6.7f, 6f, 12f, 4f)
-                        cubicTo(17.3f, 6f, 20f, 8.7f, 20f, 12f); lineTo(20f, 21f)
-                        moveTo(8f, 21f); lineTo(8f, 12f); cubicTo(10.7f, 8f, 13.3f, 8f, 16f, 12f); lineTo(16f, 21f)
-                        moveTo(2f, 21f); lineTo(22f, 21f); moveTo(12f, 4f); lineTo(12f, 1f)
-                    }
-                    Glyph.PIN -> {
-                        moveTo(12f, 22f); cubicTo(10f, 20f, 4f, 14f, 4f, 9f)
-                        cubicTo(4f, 0f, 20f, 0f, 20f, 9f); cubicTo(20f, 14f, 14f, 20f, 12f, 22f)
-                    }
-                    Glyph.CHECK -> { moveTo(4f, 12f); lineTo(9f, 17f); lineTo(20f, 6f) }
-                    Glyph.LAYERS -> {
-                        moveTo(3f, 8f); lineTo(12f, 3f); lineTo(21f, 8f); lineTo(12f, 13f); close()
-                        moveTo(3f, 13f); lineTo(12f, 18f); lineTo(21f, 13f)
-                        moveTo(3f, 17f); lineTo(12f, 22f); lineTo(21f, 17f)
-                    }
-                }
-            }
-            val stroke = Stroke(1.65f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            drawPath(outline, tint, style = stroke)
-            when (glyph) {
-                Glyph.CAMERA -> drawCircle(tint, 3.2f, Offset(12f, 12.7f), style = stroke)
-                Glyph.SCAN -> drawCircle(tint, 3.2f, Offset(12f, 12f), style = stroke)
-                Glyph.PIN -> drawCircle(tint, 2.8f, Offset(12f, 9f), style = stroke)
-                else -> Unit
-            }
-        }
-    }
+    Image(
+        painter = painterResource(glyph.drawable),
+        contentDescription = null,
+        modifier = modifier,
+        contentScale = ContentScale.Fit,
+        colorFilter = ColorFilter.tint(tint),
+    )
 }
